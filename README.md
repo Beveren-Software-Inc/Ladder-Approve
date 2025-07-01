@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # Ladder-Approve: Dynamic Multi-Level Leave and Expense Approval for ERPNext
 
 A custom Frappe app that enables dynamic, multi-level approval workflows for Leave and Expense Applications in ERPNext, supporting multiple approvers based on the reporting hierarchy with HR as the final approver.

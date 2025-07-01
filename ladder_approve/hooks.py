@@ -8,7 +8,7 @@ app_license = "mit"
 # Apps
 # ------------------
 
-# required_apps = []
+required_apps = ["hrms"]
 
 # Each item in the list will be shown as an app in the apps page
 # add_to_apps_screen = [
@@ -20,6 +20,31 @@ app_license = "mit"
 # 		"has_permission": "ladder_approve.api.permission.has_app_permission"
 # 	}
 # ]
+
+fixtures = [
+    {
+        "doctype": "Custom Field",
+        "filters": [
+            ["dt", "=", "Leave Application"],
+            ["fieldname", "in", ["custom_previous_approvers"]]
+        ]
+    },
+    {
+        "doctype": "Property Setter",
+        "filters": [
+            ["doc_type", "=", "Leave Application"],
+            ["field_name", "=", "status"]
+        ]
+    },
+    {
+        "doctype": "Notification",
+        "filters": [
+            ["document_type", "=", "Leave Application"],
+            ["name", "in", ["Leave Application", "Leave Application Rejected", "Leave Application Approved", "Leave Application Cancelled"]]
+        ]
+    }
+
+]
 
 # Includes in <head>
 # ------------------
@@ -44,6 +69,9 @@ app_license = "mit"
 
 # include js in doctype views
 # doctype_js = {"doctype" : "public/js/doctype.js"}
+doctype_js = {
+    "Leave Application": "public/js/leave_application.js"
+}
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
@@ -120,6 +148,9 @@ app_license = "mit"
 # permission_query_conditions = {
 # 	"Event": "frappe.desk.doctype.event.event.get_permission_query_conditions",
 # }
+permission_query_conditions = {
+    "Leave Application": "ladder_approve.ladder_approve.leave_application.api.leave_application_permission_query"
+}
 #
 # has_permission = {
 # 	"Event": "frappe.desk.doctype.event.event.has_permission",
@@ -144,6 +175,12 @@ app_license = "mit"
 # 		"on_trash": "method"
 # 	}
 # }
+doc_events = {
+    "Leave Application": {
+        "before_save": "ladder_approve.ladder_approve.leave_application.api.before_save",
+        "before_submit": "ladder_approve.ladder_approve.leave_application.api.before_submit",
+    }
+}
 
 # Scheduled Tasks
 # ---------------

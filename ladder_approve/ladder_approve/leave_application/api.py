@@ -3,6 +3,7 @@ from frappe import _
 
 @frappe.whitelist()
 def forward_leave(docname, designation=None):
+    # if he is an hr
     if designation == "hr":
         if not docname:
             frappe.throw(_("Missing required parameter: docname"))

@@ -3,10 +3,16 @@ frappe.ui.form.on('Leave Application', {
         const current_user = frappe.session.user;
         const status = (frm.doc.status || '').toLowerCase();
 
+        frm.set_df_property('status', 'read_only', 1);
+        frm.refresh_field('status');
+
+        document.querySelector('.form-message.blue')?.remove();
         // 1. Allow Save if document is NEW
         if (frm.is_new()) {
             frm.enable_save();
             frm.page.btn_primary?.show();
+            frm.remove_custom_button('Approve');
+            frm.remove_custom_button('Reject');
             return;
         }
 
@@ -21,40 +27,20 @@ frappe.ui.form.on('Leave Application', {
         if (current_user !== frm.doc.leave_approver && current_user !== frm.doc.owner) {
             frm.disable_save();
             frm.page.btn_primary?.hide();
-            frm.remove_custom_button('Submit for Next Approval');
+            frm.remove_custom_button('Approve');
+            frm.remove_custom_button('Reject');
             return;
         }
 
         // 5. FINAL APPROVER (HR)
         if ((designation.includes('hr') || designation.includes('human resource')) && current_user !== frm.doc.owner) {
-            if (status === "pending next approval") {
-                frappe.msgprint("Please change the status to Approved or Rejected before submitting.");
-                frm.disable_save();
-                frm.page.btn_primary?.hide();
-                return;
-            }
-            frm.enable_save();
-            frm.page.btn_primary?.show();
-            return;
-        }
-
-        // 6. MID-LEVEL APPROVER
-        if (current_user === frm.doc.leave_approver && current_user !== frm.doc.owner) {
-            // frm.set_df_property('status', 'read_only', 0); // make status editable
-            // frm.refresh_field('status');
-            
-            frm.remove_custom_button('Submit for Next Approval');
-
-            if (["rejected", "cancelled"].includes(status)) {
-                frm.enable_save();
-                frm.page.btn_primary?.show();
-            } else {
-                frm.disable_save();
-                frm.page.btn_primary?.hide();
-                frm.add_custom_button('Submit for Next Approval', () => {
+            frm.disable_save();
+            frm.page.btn_primary?.hide();
+            frm.add_custom_button('Approve', () => {
+                frappe.confirm('Are you sure you want to approve this leave application?', () => {
                     frappe.call({
                         method: 'ladder_approve.ladder_approve.leave_application.api.forward_leave',
-                        args: { docname: frm.doc.name },
+                        args: { docname: frm.doc.name, designation: "hr" },
                         callback: function (r) {
                             if (!r.exc) {
                                 frappe.msgprint(r.message);
@@ -62,6 +48,105 @@ frappe.ui.form.on('Leave Application', {
                             }
                         }
                     });
+                });
+            }).css({
+                'background-color': 'black',
+                'color': 'white',
+                'border-color': '#45a049'
+            });
+
+            // Add Reject button
+            frm.add_custom_button('Reject', () => {
+                frappe.prompt([
+                    {
+                        fieldtype: 'Data',
+                        fieldname: 'rejection_reason',
+                        label: 'Rejection Reason',
+                        reqd: 1
+                    }
+                ], (data) => {
+                    frappe.call({
+                        method: 'ladder_approve.ladder_approve.leave_application.api.reject_leave',
+                        args: { 
+                            docname: frm.doc.name,
+                            reason: data.rejection_reason 
+                        },
+                        callback: function (r) {
+                            if (!r.exc) {
+                                frappe.msgprint(r.message);
+                                frm.reload_doc();
+                            }
+                        }
+                    });
+                }, 'Reject Leave Application');
+            }).css({
+                'background-color': '#ff4444',
+                'color': 'white',
+                'border-color': '#ff4444'
+            });
+            return;
+        }
+
+        // 6. MID-LEVEL APPROVER
+        if (current_user === frm.doc.leave_approver && current_user !== frm.doc.owner) {
+            frm.remove_custom_button('Approve');
+            frm.remove_custom_button('Reject');
+
+            if (['rejected', 'cancelled'].includes(status)) {
+                frm.enable_save();
+                frm.page.btn_primary?.show();
+            } else {
+                frm.disable_save();
+                frm.page.btn_primary?.hide();
+                
+                // Add Approve button
+                frm.add_custom_button('Approve', () => {
+                    frappe.confirm('Are you sure you want to approve this leave application?', () => {
+                        frappe.call({
+                            method: 'ladder_approve.ladder_approve.leave_application.api.forward_leave',
+                            args: { docname: frm.doc.name },
+                            callback: function (r) {
+                                if (!r.exc) {
+                                    frappe.msgprint(r.message);
+                                    frm.reload_doc();
+                                }
+                            }
+                        });
+                    });
+                }).css({
+                    'background-color': 'black',
+                    'color': 'white',
+                    'border-color': '#45a049'
+                });
+
+                // Add Reject button
+                frm.add_custom_button('Reject', () => {
+                    frappe.prompt([
+                        {
+                            fieldtype: 'Data',
+                            fieldname: 'rejection_reason',
+                            label: 'Rejection Reason',
+                            reqd: 1
+                        }
+                    ], (data) => {
+                        frappe.call({
+                            method: 'ladder_approve.ladder_approve.leave_application.api.reject_leave',
+                            args: { 
+                                docname: frm.doc.name,
+                                reason: data.rejection_reason 
+                            },
+                            callback: function (r) {
+                                if (!r.exc) {
+                                    frappe.msgprint(r.message);
+                                    frm.reload_doc();
+                                }
+                            }
+                        });
+                    }, 'Reject Leave Application');
+                }).css({
+                    'background-color': '#ff4444',
+                    'color': 'white',
+                    'border-color': '#ff4444'
                 });
             }
             return;
@@ -69,76 +154,11 @@ frappe.ui.form.on('Leave Application', {
 
         // 7. APPLICANT (owner, not approver)
         if (current_user === frm.doc.owner && current_user !== frm.doc.leave_approver) {
-            frm.remove_custom_button('Submit for Next Approval');
-
-            if (status !== "open") {
-                frm.disable_save();
-                frm.page.btn_primary?.hide();
-                frappe.msgprint("You can only apply for leave when status is 'Open'.");
-            } else {
-                frm.enable_save();
-                frm.page.btn_primary?.show();
-            }
+            frm.remove_custom_button('Approve');
+            frm.remove_custom_button('Reject');
+            frm.disable_save();
+            frm.page.btn_primary?.hide();
         }
     },
-
-    status: async function (frm) {
-        const current_user = frappe.session.user;
-        const status = (frm.doc.status || '').toLowerCase();
-
-        const emp = await frappe.db.get_value('Employee', { user_id: current_user }, ['designation']);
-        const designation = (emp.message?.designation || '').toLowerCase();
-
-        // HR Final Approver
-        if ((designation.includes('hr') || designation.includes('human resource')) && current_user !== frm.doc.owner) {
-            if (status === "pending next approval" || status === "Open") {
-                frappe.msgprint("Please change the status to Approved or Rejected before submitting.");
-                frm.disable_save();
-                frm.page.btn_primary?.hide();
-                return;
-            }
-            frm.enable_save();
-            frm.page.btn_primary?.show();
-            return;
-        }
-
-        // Mid-level approver
-        if (current_user === frm.doc.leave_approver && current_user !== frm.doc.owner) {
-            frm.remove_custom_button('Submit for Next Approval');
-
-            if (["rejected", "cancelled"].includes(status)) {
-                frm.enable_save();
-                frm.page.btn_primary?.show();
-            } else {
-                frm.disable_save();
-                frm.page.btn_primary?.hide();
-                frm.add_custom_button('Submit for Next Approval', () => {
-                    frappe.call({
-                        method: 'ladder_approve.ladder_approve.leave_application.api.forward_leave',
-                        args: { docname: frm.doc.name },
-                        callback: function (r) {
-                            if (!r.exc) {
-                                frappe.msgprint(r.message);
-                                frm.reload_doc();
-                            }
-                        }
-                    });
-                });
-            }
-        }
-
-        // Applicant logic
-        if (current_user === frm.doc.owner && current_user !== frm.doc.leave_approver) {
-            frm.remove_custom_button('Submit for Next Approval');
-
-            if (status !== "open") {
-                frm.disable_save();
-                frm.page.btn_primary?.hide();
-                frappe.msgprint("You can only apply for leave when status is 'Open'.");
-            } else {
-                frm.enable_save();
-                frm.page.btn_primary?.show();
-            }
-        }
-    }
+    
 });

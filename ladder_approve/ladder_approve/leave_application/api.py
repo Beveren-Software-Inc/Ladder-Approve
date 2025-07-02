@@ -2,7 +2,26 @@ import frappe
 from frappe import _
 
 @frappe.whitelist()
-def forward_leave(docname):
+def forward_leave(docname, designation=None):
+    if designation == "hr":
+        if not docname:
+            frappe.throw(_("Missing required parameter: docname"))
+
+        doc = frappe.get_doc("Leave Application", docname)
+
+        if doc.docstatus != 0:
+            frappe.throw(_("Only draft documents can be approved."))
+
+        if doc.leave_approver != frappe.session.user:
+            frappe.throw(_("You're not the assigned approver."))
+
+        doc.status = "Approved"
+
+        doc.save(ignore_permissions=True)
+        doc.submit()
+
+        return f"Leave application approved"
+    
     if not docname:
         frappe.throw(_("Missing required parameter: docname"))
 
@@ -51,6 +70,27 @@ def forward_leave(docname):
     doc.save(ignore_permissions=True)
 
     return f"Leave forwarded to next approver: {next_mgr['employee']}"
+
+@frappe.whitelist()
+def reject_leave(docname, reason):
+    if not docname:
+        frappe.throw(_("Missing required parameter: docname"))
+
+    doc = frappe.get_doc("Leave Application", docname)
+
+    if doc.docstatus != 0:
+        frappe.throw(_("Only draft documents can be rejected."))
+
+    if doc.leave_approver != frappe.session.user:
+        frappe.throw(_("You're not the assigned approver."))
+    doc.custom_rejection_reason = reason
+    doc.status = "Rejected"
+    doc.rejection_reason = reason
+
+    doc.save(ignore_permissions=True)
+    doc.submit()
+
+    return f"Leave application rejected. Reason: {reason}"
 
 
 

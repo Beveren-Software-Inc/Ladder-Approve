@@ -26,7 +26,7 @@ fixtures = [
         "doctype": "Custom Field",
         "filters": [
             ["dt", "=", "Leave Application"],
-            ["fieldname", "in", ["custom_previous_approvers"]]
+            ["fieldname", "in", ["custom_previous_approvers", "custom_rejection_reason"]]
         ]
     },
     {

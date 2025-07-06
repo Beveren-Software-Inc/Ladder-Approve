@@ -3,6 +3,10 @@ frappe.ui.form.on('Leave Application', {
         const current_user = frappe.session.user;
         const status = (frm.doc.status || '').toLowerCase();
 
+        // ✅ Step 1: Check if multi-level approval is enabled
+        const is_enabled = await frappe.db.get_single_value('HR Settings', 'enable_multi_level_leave_approval');
+        if (!is_enabled) return;
+        
         frm.set_df_property('status', 'read_only', 1);
         frm.refresh_field('status');
 

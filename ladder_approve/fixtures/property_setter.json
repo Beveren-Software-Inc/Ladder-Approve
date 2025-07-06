@@ -1,6 +1,22 @@
 [
  {
   "default_value": null,
+  "doc_type": "Expense Claim",
+  "docstatus": 0,
+  "doctype": "Property Setter",
+  "doctype_or_field": "DocField",
+  "field_name": "approval_status",
+  "is_system_generated": 0,
+  "modified": "2025-07-03 12:21:50.531128",
+  "module": null,
+  "name": "Expense Claim-status-options",
+  "property": "options",
+  "property_type": null,
+  "row_name": null,
+  "value": "Draft\nPending Next Approval\nApproved\nRejected"
+ },
+ {
+  "default_value": null,
   "doc_type": "Leave Application",
   "docstatus": 0,
   "doctype": "Property Setter",

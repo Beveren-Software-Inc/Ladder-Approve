@@ -2,36 +2,36 @@ import frappe
 from frappe import _
 
 @frappe.whitelist()
-def forward_leave(docname, designation=None):
+def forward_expense_claim(docname, designation=None):
     # if he is an hr
-    if designation == "hr" or frappe.session.user == "Administrator":
+    if designation == "hr":
         if not docname:
             frappe.throw(_("Missing required parameter: docname"))
 
-        doc = frappe.get_doc("Leave Application", docname)
+        doc = frappe.get_doc("Expense Claim", docname)
 
         if doc.docstatus != 0:
             frappe.throw(_("Only draft documents can be approved."))
 
-        if doc.leave_approver != frappe.session.user:
+        if doc.expense_approver != frappe.session.user:
             frappe.throw(_("You're not the assigned approver."))
 
-        doc.status = "Approved"
+        doc.approval_status = "Approved"
 
         doc.save(ignore_permissions=True)
         doc.submit()
 
-        return f"Leave application approved"
+        return f"Expense claim approved"
     
     if not docname:
         frappe.throw(_("Missing required parameter: docname"))
 
-    doc = frappe.get_doc("Leave Application", docname)
+    doc = frappe.get_doc("Expense Claim", docname)
 
     if doc.docstatus != 0:
         frappe.throw(_("Only draft documents can be forwarded."))
 
-    if doc.leave_approver != frappe.session.user:
+    if doc.expense_approver != frappe.session.user:
         frappe.throw(_("You're not the assigned approver."))
 
     chain = []
@@ -54,44 +54,44 @@ def forward_leave(docname, designation=None):
 
     index = next((i for i, mgr in enumerate(chain) if mgr["user_id"] == frappe.session.user), -1)
     if index == -1 or index + 1 >= len(chain):
-        frappe.throw(_("No further approvers available, Please add your Leave approver in reports_to field in your employee master"))
+        frappe.throw(_("No further approvers available, Please add your Expense approver in reports_to field in your employee master"))
 
     next_mgr = chain[index + 1]
 
     # Append to previous approvers
-    existing = doc.custom_previous_approvers.split('\n') if doc.custom_previous_approvers else []
-    if doc.leave_approver and doc.leave_approver not in existing:
-        existing.append(doc.leave_approver)
-    doc.custom_previous_approvers = "\n".join(existing)
+    existing = doc.custom_previously_approved_by.split('\n') if doc.custom_previously_approved_by else []
+    if doc.expense_approver and doc.expense_approver not in existing:
+        existing.append(doc.expense_approver)
+    doc.custom_previously_approved_by = "\n".join(existing)
 
-    doc.leave_approver = next_mgr["user_id"]
-    doc.leave_approver_name = next_mgr["employee"]
-    doc.status = "Pending Next Approval"
+    doc.expense_approver = next_mgr["user_id"]
+    doc.expense_approver_name = next_mgr["employee"]
+    doc.approval_status = "Pending Next Approval"
 
     doc.save(ignore_permissions=True)
 
-    return f"Leave forwarded to next approver: {next_mgr['employee']}"
+    return f"Expense claim forwarded to next approver: {next_mgr['employee']}"
 
 @frappe.whitelist()
-def reject_leave(docname, reason):
+def reject_expense_claim(docname, reason):
     if not docname:
         frappe.throw(_("Missing required parameter: docname"))
 
-    doc = frappe.get_doc("Leave Application", docname)
+    doc = frappe.get_doc("Expense Claim", docname)
 
     if doc.docstatus != 0:
         frappe.throw(_("Only draft documents can be rejected."))
 
-    if doc.leave_approver != frappe.session.user:
+    if doc.expense_approver != frappe.session.user:
         frappe.throw(_("You're not the assigned approver."))
     doc.custom_rejection_reason = reason
-    doc.status = "Rejected"
+    doc.approval_status = "Rejected"
     doc.rejection_reason = reason
 
-    doc.save(ignore_permissions=True)
+    doc.save(ignore_permissions=True) 
     doc.submit()
 
-    return f"Leave application rejected. Reason: {reason}"
+    return f"Expense claim rejected. Reason: {reason}"
 
 
 
@@ -100,17 +100,17 @@ def before_save(doc, method):
         emp = frappe.get_doc("Employee", doc.employee)
         if emp.reports_to:
             manager = frappe.get_doc("Employee", emp.reports_to)
-            doc.leave_approver = manager.user_id
-            doc.leave_approver_name = manager.user_id
+            doc.expense_approver = manager.user_id
+            doc.expense_approver_name = manager.user_id
 
 
 def before_submit(doc, method):
-    if doc.status == "Pending Next Approval":
+    if doc.approval_status == "Pending Next Approval":
         frappe.throw(_("Only Approved or Rejected status can be submitted."))
 
 
 
-def leave_application_permission_query(user):
+def expense_claim_permission_query(user):
     if user == "Administrator":
         return ""
 
@@ -123,8 +123,8 @@ def leave_application_permission_query(user):
         return ""
 
     return (
-        f"`tabLeave Application`.owner = '{user}'"
-        f" OR `tabLeave Application`.leave_approver = '{user}'"
-        f" OR `tabLeave Application`.custom_previous_approvers LIKE '%{user}%'"
+        f"`tabExpense Claim`.owner = '{user}'"
+        f" OR `tabExpense Claim`.expense_approver = '{user}'"
+        f" OR `tabExpense Claim`.custom_previously_approved_by LIKE '%{user}%'"
     )
 

@@ -70,7 +70,8 @@ fixtures = [
 # include js in doctype views
 # doctype_js = {"doctype" : "public/js/doctype.js"}
 doctype_js = {
-    "Leave Application": "public/js/leave_application.js"
+    "Leave Application": "public/js/leave_application.js",
+    "Expense Claim": "public/js/expense_claim.js"
 }
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
@@ -149,7 +150,8 @@ doctype_js = {
 # 	"Event": "frappe.desk.doctype.event.event.get_permission_query_conditions",
 # }
 permission_query_conditions = {
-    "Leave Application": "ladder_approve.ladder_approve.leave_application.api.leave_application_permission_query"
+    "Leave Application": "ladder_approve.ladder_approve.leave_application.api.leave_application_permission_query",
+    "Expense Claim": "ladder_approve.ladder_approve.expense_claim.api.expense_claim_permission_query"
 }
 #
 # has_permission = {
@@ -179,6 +181,10 @@ doc_events = {
     "Leave Application": {
         "before_save": "ladder_approve.ladder_approve.leave_application.api.before_save",
         "before_submit": "ladder_approve.ladder_approve.leave_application.api.before_submit",
+    },
+    "Expense Claim": {
+        "before_save": "ladder_approve.ladder_approve.expense_claim.api.before_save",
+        "before_submit": "ladder_approve.ladder_approve.expense_claim.api.before_submit",
     }
 }
 

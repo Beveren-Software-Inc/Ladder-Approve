@@ -25,22 +25,22 @@ fixtures = [
     {
         "doctype": "Custom Field",
         "filters": [
-            ["dt", "=", "Leave Application"],
-            ["fieldname", "in", ["custom_previous_approvers", "custom_rejection_reason"]]
+            ["dt", "in", ["Leave Application", "Expense Claim", "HR Settings"]],
+            ["name", "in", ["Leave Application-custom_previous_approvers", "Expense Claim-custom_previously_approved_by", "Leave Application-custom_rejection_reason", "Expense Claim-custom_rejection_reason", "HR Settings-enable_multi_level_leave_approval", "HR Settings-enable_multi_level_expense_claim_approval"]]
         ]
     },
     {
         "doctype": "Property Setter",
         "filters": [
-            ["doc_type", "=", "Leave Application"],
-            ["field_name", "=", "status"]
+            ["doc_type", "in", ["Leave Application", "Expense Claim"]],
+            ["name", "in", ["Leave Application-status-options", "Expense Claim-status-options"]]
         ]
     },
     {
         "doctype": "Notification",
         "filters": [
-            ["document_type", "=", "Leave Application"],
-            ["name", "in", ["Leave Application", "Leave Application Rejected", "Leave Application Approved", "Leave Application Cancelled"]]
+            ["document_type", "in", ["Leave Application", "Expense Claim"]],
+            ["name", "in", ["Leave Application", "Leave Application Rejected", "Leave Application Approved", "Expense Claim", "Expense Claim Rejected", "Expense Claim Approved"]]
         ]
     }
 

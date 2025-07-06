@@ -2,10 +2,9 @@ frappe.ui.form.on('Expense Claim', {
     async refresh(frm) {
         const current_user = frappe.session.user;
         const status = (frm.doc.approval_status || '').toLowerCase();
-
-        // if ((designation.includes('hr') || designation.includes('human resource')) && current_user !== frm.doc.owner) {
-        //     return;
-        // }
+        
+        const is_enabled = await frappe.db.get_single_value('HR Settings', 'enable_multi_level_expense_claim_approval');
+        if (!is_enabled) return;
 
         if (frm.doc.approval_status) {
             frm.set_df_property('approval_status', 'read_only', 1);

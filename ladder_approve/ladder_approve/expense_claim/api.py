@@ -3,8 +3,8 @@ from frappe import _
 
 @frappe.whitelist()
 def forward_expense_claim(docname, designation=None):
-    # if he is an hr
-    if designation == "hr":
+    # if he is an hr or admin
+    if designation == "hr" or frappe.session.user == "Administrator":
         if not docname:
             frappe.throw(_("Missing required parameter: docname"))
 
@@ -93,24 +93,36 @@ def reject_expense_claim(docname, reason):
 
     return f"Expense claim rejected. Reason: {reason}"
 
+def is_feature_enabled(flag):
+    try:
+        settings = frappe.get_cached_doc("HR Settings")
+        return getattr(settings, flag, False)
+    except frappe.DoesNotExistError:
+        return False
 
 
 def before_save(doc, method):
+    if not is_feature_enabled("enable_multi_level_expense_claim_approval"):
+        return
     if doc.is_new():
         emp = frappe.get_doc("Employee", doc.employee)
         if emp.reports_to:
             manager = frappe.get_doc("Employee", emp.reports_to)
             doc.expense_approver = manager.user_id
-            doc.expense_approver_name = manager.user_id
+            doc.expense_approver_name = manager.employee_name
 
 
 def before_submit(doc, method):
+    if not is_feature_enabled("enable_multi_level_expense_claim_approval"):
+        return
     if doc.approval_status == "Pending Next Approval":
         frappe.throw(_("Only Approved or Rejected status can be submitted."))
 
 
 
 def expense_claim_permission_query(user):
+    if not is_feature_enabled("enable_multi_level_expense_claim_approval"):
+        return
     if user == "Administrator":
         return ""
 

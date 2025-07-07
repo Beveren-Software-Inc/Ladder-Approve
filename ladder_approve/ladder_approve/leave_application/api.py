@@ -93,24 +93,35 @@ def reject_leave(docname, reason):
 
     return f"Leave application rejected. Reason: {reason}"
 
-
+def is_feature_enabled(flag):
+    try:
+        settings = frappe.get_cached_doc("HR Settings")
+        return getattr(settings, flag, False)
+    except frappe.DoesNotExistError:
+        return False
 
 def before_save(doc, method):
+    if not is_feature_enabled("enable_multi_level_leave_approval"):
+        return
     if doc.is_new():
         emp = frappe.get_doc("Employee", doc.employee)
         if emp.reports_to:
             manager = frappe.get_doc("Employee", emp.reports_to)
             doc.leave_approver = manager.user_id
-            doc.leave_approver_name = manager.user_id
+            doc.leave_approver_name = manager.employee_name
 
 
 def before_submit(doc, method):
+    if not is_feature_enabled("enable_multi_level_leave_approval"):
+        return
     if doc.status == "Pending Next Approval":
         frappe.throw(_("Only Approved or Rejected status can be submitted."))
 
 
 
 def leave_application_permission_query(user):
+    if not is_feature_enabled("enable_multi_level_leave_approval"):
+        return
     if user == "Administrator":
         return ""
 

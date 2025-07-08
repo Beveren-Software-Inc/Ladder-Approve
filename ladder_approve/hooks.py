@@ -25,8 +25,8 @@ fixtures = [
     {
         "doctype": "Custom Field",
         "filters": [
-            ["dt", "in", ["Leave Application", "Expense Claim", "HR Settings"]],
-            ["name", "in", ["Leave Application-custom_previous_approvers", "Expense Claim-custom_previously_approved_by", "Leave Application-custom_rejection_reason", "Expense Claim-custom_rejection_reason", "HR Settings-enable_multi_level_leave_approval", "HR Settings-enable_multi_level_expense_claim_approval"]]
+            ["dt", "in", ["Leave Application", "Expense Claim", "HR Settings", "Employee"]],
+            ["name", "in", ["Leave Application-custom_previous_approvers", "Expense Claim-custom_previously_approved_by", "Leave Application-custom_rejection_reason", "Expense Claim-custom_rejection_reason", "HR Settings-enable_multi_level_leave_approval", "HR Settings-enable_multi_level_expense_claim_approval", "Employee-custom_disable_multilevel_approval"]]
         ]
     },
     {

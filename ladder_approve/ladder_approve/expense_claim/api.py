@@ -100,9 +100,17 @@ def is_feature_enabled(flag):
     except frappe.DoesNotExistError:
         return False
 
+def is_employee_disable_multilevel_approval(docname):
+    try:
+        emp = frappe.get_doc("Employee", docname)
+        return emp.custom_disable_multilevel_approval
+    except frappe.DoesNotExistError:
+        return False
 
 def before_save(doc, method):
     if not is_feature_enabled("enable_multi_level_expense_claim_approval"):
+        return
+    if is_employee_disable_multilevel_approval(doc.employee):
         return
     if doc.is_new():
         emp = frappe.get_doc("Employee", doc.employee)
@@ -115,6 +123,8 @@ def before_save(doc, method):
 def before_submit(doc, method):
     if not is_feature_enabled("enable_multi_level_expense_claim_approval"):
         return
+    if is_employee_disable_multilevel_approval(doc.employee):
+        return
     if doc.approval_status == "Pending Next Approval":
         frappe.throw(_("Only Approved or Rejected status can be submitted."))
 
@@ -122,6 +132,8 @@ def before_submit(doc, method):
 
 def expense_claim_permission_query(user):
     if not is_feature_enabled("enable_multi_level_expense_claim_approval"):
+        return
+    if is_employee_disable_multilevel_approval(doc.employee):
         return
     if user == "Administrator":
         return ""

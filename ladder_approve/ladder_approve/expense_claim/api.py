@@ -133,8 +133,8 @@ def before_submit(doc, method):
 def expense_claim_permission_query(user):
     if not is_feature_enabled("enable_multi_level_expense_claim_approval"):
         return
-    if is_employee_disable_multilevel_approval(doc.employee):
-        return
+    # if is_employee_disable_multilevel_approval(doc.employee):
+    #     return
     if user == "Administrator":
         return ""
 

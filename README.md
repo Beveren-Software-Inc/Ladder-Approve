@@ -36,3 +36,6 @@ A custom Frappe app that enables dynamic, multi-level approval workflows for Lea
    bench get-app ladder_approve https://github.com/Beveren-Software-Inc/ladder_approve.git
    bench --site yoursite install-app ladder_approve
 
+
+![image](https://github.com/user-attachments/assets/ad78b8bb-ef32-4429-b358-1989e832d624)
+

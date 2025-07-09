@@ -6,7 +6,8 @@ frappe.ui.form.on('Leave Application', {
         const is_settings_enabled = await frappe.db.get_single_value('HR Settings', 'enable_multi_level_leave_approval');
         if (!is_settings_enabled) return;
 
-        const is_employee_disable = await frappe.db.get_value('Employee', frm.doc.employee, 'custom_disable_multilevel_approval');
+        const res = await frappe.db.get_value('Employee', frm.doc.employee, 'custom_disable_multilevel_approval');
+        const is_employee_disable = res?.message?.custom_disable_multilevel_approval;
         if (is_employee_disable) return;
 
         //  2. Set 'status' as read-only always

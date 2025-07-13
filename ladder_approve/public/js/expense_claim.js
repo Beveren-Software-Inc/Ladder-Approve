@@ -62,14 +62,16 @@ frappe.ui.form.on('Expense Claim', {
 
     // Trigger when edited
     payable_account: function(frm) {
-        if (frappe.session.user === frm.doc.owner) {
-            frm.page.btn_primary?.show();
-            frm.enable_save();
-        }
+        frm.page.btn_primary?.show();
+        frm.enable_save();
+        frm.remove_custom_button('Approve');
+        frm.remove_custom_button('Reject');
     },
 
     after_save(frm) {
         frm.page.btn_primary?.hide();
+        frm.disable_save();
+        add_approve_reject_buttons(frm, false);
     }
 });
 

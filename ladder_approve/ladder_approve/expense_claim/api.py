@@ -1,61 +1,26 @@
 import frappe
 from frappe import _
+from frappe.database import utils
+from ladder_approve.ladder_approve import utils
 
 @frappe.whitelist()
 def forward_expense_claim(docname, designation=None):
+
     # if he is an hr or admin
     if designation == "hr" or frappe.session.user == "Administrator":
-        if not docname:
-            frappe.throw(_("Missing required parameter: docname"))
 
         doc = frappe.get_doc("Expense Claim", docname)
-
-        if doc.docstatus != 0:
-            frappe.throw(_("Only draft documents can be approved."))
-
-        if doc.expense_approver != frappe.session.user:
-            frappe.throw(_("You're not the assigned approver."))
-
         doc.approval_status = "Approved"
-
         doc.save(ignore_permissions=True)
         doc.submit()
 
         return f"Expense claim approved"
-    
-    if not docname:
-        frappe.throw(_("Missing required parameter: docname"))
 
-    doc = frappe.get_doc("Expense Claim", docname)
-
-    if doc.docstatus != 0:
-        frappe.throw(_("Only draft documents can be forwarded."))
-
-    if doc.expense_approver != frappe.session.user:
-        frappe.throw(_("You're not the assigned approver."))
-
-    chain = []
-    visited = set()
-    current_emp = frappe.get_doc("Employee", doc.employee)
-
-    while current_emp.reports_to and current_emp.name not in visited:
-        visited.add(current_emp.name)
-        manager = frappe.get_doc("Employee", current_emp.reports_to)
-        designation = (manager.designation or "").lower()
-        is_hr = "hr" in designation or "human resource" in designation
-        chain.append({
-            "employee": manager.employee_name,
-            "user_id": manager.user_id,
-            "is_hr": is_hr
-        })
-        if is_hr:
-            break
-        current_emp = manager
-
+    doc = utils.validate_doc(docname,"Expense Claim","expense_approver")
+    chain = utils.get_manager_chain(doc.employee)
     index = next((i for i, mgr in enumerate(chain) if mgr["user_id"] == frappe.session.user), -1)
     if index == -1 or index + 1 >= len(chain):
         frappe.throw(_("No further approvers available, Please add your Expense approver in reports_to field in your employee master"))
-
     next_mgr = chain[index + 1]
 
     # Append to previous approvers
@@ -74,43 +39,23 @@ def forward_expense_claim(docname, designation=None):
 
 @frappe.whitelist()
 def reject_expense_claim(docname, reason):
-    if not docname:
-        frappe.throw(_("Missing required parameter: docname"))
 
-    doc = frappe.get_doc("Expense Claim", docname)
+    doc = utils.validate_doc(docname,"Expense Claim","expense_approver")
 
-    if doc.docstatus != 0:
-        frappe.throw(_("Only draft documents can be rejected."))
-
-    if doc.expense_approver != frappe.session.user:
-        frappe.throw(_("You're not the assigned approver."))
     doc.custom_rejection_reason = reason
     doc.approval_status = "Rejected"
     doc.rejection_reason = reason
 
-    doc.save(ignore_permissions=True) 
+    doc.save(ignore_permissions=True)
     doc.submit()
 
     return f"Expense claim rejected. Reason: {reason}"
 
-def is_feature_enabled(flag):
-    try:
-        settings = frappe.get_cached_doc("HR Settings")
-        return getattr(settings, flag, False)
-    except frappe.DoesNotExistError:
-        return False
-
-def is_employee_disable_multilevel_approval(docname):
-    try:
-        emp = frappe.get_doc("Employee", docname)
-        return emp.custom_disable_multilevel_approval
-    except frappe.DoesNotExistError:
-        return False
 
 def before_save(doc, method):
-    if not is_feature_enabled("enable_multi_level_expense_claim_approval"):
+    if not utils.is_feature_enabled(None, "expense_claim"):  # will use enable_multi_level_expense_claim_approval
         return
-    if is_employee_disable_multilevel_approval(doc.employee):
+    if utils.is_employee_disable_multilevel_approval(doc.employee):
         return
     if doc.is_new():
         emp = frappe.get_doc("Employee", doc.employee)
@@ -121,20 +66,20 @@ def before_save(doc, method):
 
 
 def before_submit(doc, method):
-    if not is_feature_enabled("enable_multi_level_expense_claim_approval"):
+    if not utils.is_feature_enabled(None, "expense_claim"):
         return
-    if is_employee_disable_multilevel_approval(doc.employee):
+    if utils.is_employee_disable_multilevel_approval(doc.employee):
         return
     if doc.approval_status == "Pending Next Approval":
         frappe.throw(_("Only Approved or Rejected status can be submitted."))
 
 
+from frappe.query_builder import DocType
+from pypika.terms import Criterion
 
 def expense_claim_permission_query(user):
-    if not is_feature_enabled("enable_multi_level_expense_claim_approval"):
+    if not utils.is_feature_enabled(flag=None,doc_type="expense_claim"):
         return
-    # if is_employee_disable_multilevel_approval(doc.employee):
-    #     return
     if user == "Administrator":
         return ""
 
@@ -146,9 +91,21 @@ def expense_claim_permission_query(user):
     if has_role:
         return ""
 
-    return (
-        f"`tabExpense Claim`.owner = '{user}'"
-        f" OR `tabExpense Claim`.expense_approver = '{user}'"
-        f" OR `tabExpense Claim`.custom_previously_approved_by LIKE '%{user}%'"
+    # return (
+    #     f"`tabExpense Claim`.owner = '{user}'"
+    #     f" OR `tabExpense Claim`.expense_approver = '{user}'"
+    #     f" OR `tabExpense Claim`.custom_previously_approved_by LIKE '%{user}%'"
+    # )
+
+    # QB starts here
+    ExpenseClaim = DocType("Expense Claim")
+
+    # This builds the permission condition, but for full query override you’ll use this in context
+    conditions = (
+        (ExpenseClaim.owner == user) |
+        (ExpenseClaim.expense_approver == user) |
+        ExpenseClaim.custom_previously_approved_by.like(f"%{user}%")
     )
 
+    # Convert QB expression to SQL string for use in get_permission_query_conditions
+    return str(conditions)

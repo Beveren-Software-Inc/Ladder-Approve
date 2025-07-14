@@ -1,61 +1,28 @@
 import frappe
 from frappe import _
 
+
+from ladder_approve.ladder_approve import utils
+
 @frappe.whitelist()
 def forward_leave(docname, designation=None):
+
     # if he is an hr
     if designation == "hr" or frappe.session.user == "Administrator":
-        if not docname:
-            frappe.throw(_("Missing required parameter: docname"))
 
         doc = frappe.get_doc("Leave Application", docname)
-
-        if doc.docstatus != 0:
-            frappe.throw(_("Only draft documents can be approved."))
-
-        if doc.leave_approver != frappe.session.user:
-            frappe.throw(_("You're not the assigned approver."))
-
         doc.status = "Approved"
 
         doc.save(ignore_permissions=True)
         doc.submit()
 
         return f"Leave application approved"
-    
-    if not docname:
-        frappe.throw(_("Missing required parameter: docname"))
 
-    doc = frappe.get_doc("Leave Application", docname)
-
-    if doc.docstatus != 0:
-        frappe.throw(_("Only draft documents can be forwarded."))
-
-    if doc.leave_approver != frappe.session.user:
-        frappe.throw(_("You're not the assigned approver."))
-
-    chain = []
-    visited = set()
-    current_emp = frappe.get_doc("Employee", doc.employee)
-
-    while current_emp.reports_to and current_emp.name not in visited:
-        visited.add(current_emp.name)
-        manager = frappe.get_doc("Employee", current_emp.reports_to)
-        designation = (manager.designation or "").lower()
-        is_hr = "hr" in designation or "human resource" in designation
-        chain.append({
-            "employee": manager.employee_name,
-            "user_id": manager.user_id,
-            "is_hr": is_hr
-        })
-        if is_hr:
-            break
-        current_emp = manager
-
+    doc = utils.validate_doc(docname,"Leave Application","leave_approver")
+    chain = utils.get_manager_chain(doc.employee)
     index = next((i for i, mgr in enumerate(chain) if mgr["user_id"] == frappe.session.user), -1)
     if index == -1 or index + 1 >= len(chain):
         frappe.throw(_("No further approvers available, Please add your Leave approver in reports_to field in your employee master"))
-
     next_mgr = chain[index + 1]
 
     # Append to previous approvers
@@ -74,16 +41,9 @@ def forward_leave(docname, designation=None):
 
 @frappe.whitelist()
 def reject_leave(docname, reason):
-    if not docname:
-        frappe.throw(_("Missing required parameter: docname"))
 
-    doc = frappe.get_doc("Leave Application", docname)
+    doc = utils.validate_doc(docname,"Leave Application","leave_approver")
 
-    if doc.docstatus != 0:
-        frappe.throw(_("Only draft documents can be rejected."))
-
-    if doc.leave_approver != frappe.session.user:
-        frappe.throw(_("You're not the assigned approver."))
     doc.custom_rejection_reason = reason
     doc.status = "Rejected"
     doc.rejection_reason = reason
@@ -93,24 +53,11 @@ def reject_leave(docname, reason):
 
     return f"Leave application rejected. Reason: {reason}"
 
-def is_feature_enabled(flag):
-    try:
-        settings = frappe.get_cached_doc("HR Settings")
-        return getattr(settings, flag, False)
-    except frappe.DoesNotExistError:
-        return False
-
-def is_employee_disable_multilevel_approval(docname):
-    try:
-        emp = frappe.get_doc("Employee", docname)
-        return emp.custom_disable_multilevel_approval
-    except frappe.DoesNotExistError:
-        return False
 
 def before_save(doc, method):
-    if not is_feature_enabled("enable_multi_level_leave_approval"):
+    if not utils.is_feature_enabled(None, "leave"):  # will use enable_multi_level_leave_approval
         return
-    if is_employee_disable_multilevel_approval(doc.employee):
+    if utils.is_employee_disable_multilevel_approval(doc.employee):
         return
     if doc.is_new():
         emp = frappe.get_doc("Employee", doc.employee)
@@ -121,9 +68,9 @@ def before_save(doc, method):
 
 
 def before_submit(doc, method):
-    if not is_feature_enabled("enable_multi_level_leave_approval"):
+    if not utils.is_feature_enabled(None, "leave"):
         return
-    if is_employee_disable_multilevel_approval(doc.employee):
+    if utils.is_employee_disable_multilevel_approval(doc.employee):
         return
     if doc.status == "Pending Next Approval":
         frappe.throw(_("Only Approved or Rejected status can be submitted."))
@@ -131,10 +78,8 @@ def before_submit(doc, method):
 
 
 def leave_application_permission_query(user):
-    if not is_feature_enabled("enable_multi_level_leave_approval"):
+    if not utils.is_feature_enabled(flag=None,doc_type="leave"):
         return
-    # if is_employee_disable_multilevel_approval(doc.employee):
-    #     return
     if user == "Administrator":
         return ""
 
@@ -151,4 +96,5 @@ def leave_application_permission_query(user):
         f" OR `tabLeave Application`.leave_approver = '{user}'"
         f" OR `tabLeave Application`.custom_previous_approvers LIKE '%{user}%'"
     )
+
 

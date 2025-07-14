@@ -76,8 +76,6 @@ def before_submit(doc, method):
         frappe.throw(_("Only Approved or Rejected status can be submitted."))
 
 
-from frappe.query_builder import DocType
-from pypika.terms import Criterion
 
 def leave_application_permission_query(user):
     if not utils.is_feature_enabled(flag=None,doc_type="leave"):
@@ -93,22 +91,10 @@ def leave_application_permission_query(user):
     if has_role:
         return ""
 
-    # return (
-    #     f"`tabLeave Application`.owner = '{user}'"
-    #     f" OR `tabLeave Application`.leave_approver = '{user}'"
-    #     f" OR `tabLeave Application`.custom_previous_approvers LIKE '%{user}%'"
-    # )
-
-    # QB starts here
-    LeaveApplication = DocType("Leave Application")
-
-    # This builds the permission condition, but for full query override you’ll use this in context
-    conditions = (
-        (LeaveApplication.owner == user) |
-        (LeaveApplication.expense_approver == user) |
-        LeaveApplication.custom_previous_approvers.like(f"%{user}%")
+    return (
+        f"`tabLeave Application`.owner = '{user}'"
+        f" OR `tabLeave Application`.leave_approver = '{user}'"
+        f" OR `tabLeave Application`.custom_previous_approvers LIKE '%{user}%'"
     )
 
-    # Convert QB expression to SQL string for use in get_permission_query_conditions
-    return str(conditions)
 

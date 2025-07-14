@@ -74,9 +74,6 @@ def before_submit(doc, method):
         frappe.throw(_("Only Approved or Rejected status can be submitted."))
 
 
-from frappe.query_builder import DocType
-from pypika.terms import Criterion
-
 def expense_claim_permission_query(user):
     if not utils.is_feature_enabled(flag=None,doc_type="expense_claim"):
         return
@@ -91,21 +88,8 @@ def expense_claim_permission_query(user):
     if has_role:
         return ""
 
-    # return (
-    #     f"`tabExpense Claim`.owner = '{user}'"
-    #     f" OR `tabExpense Claim`.expense_approver = '{user}'"
-    #     f" OR `tabExpense Claim`.custom_previously_approved_by LIKE '%{user}%'"
-    # )
-
-    # QB starts here
-    ExpenseClaim = DocType("Expense Claim")
-
-    # This builds the permission condition, but for full query override you’ll use this in context
-    conditions = (
-        (ExpenseClaim.owner == user) |
-        (ExpenseClaim.expense_approver == user) |
-        ExpenseClaim.custom_previously_approved_by.like(f"%{user}%")
+    return (
+        f"`tabExpense Claim`.owner = '{user}'"
+        f" OR `tabExpense Claim`.expense_approver = '{user}'"
+        f" OR `tabExpense Claim`.custom_previously_approved_by LIKE '%{user}%'"
     )
-
-    # Convert QB expression to SQL string for use in get_permission_query_conditions
-    return str(conditions)

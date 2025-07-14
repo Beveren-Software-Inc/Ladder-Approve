@@ -33,7 +33,7 @@ fixtures = [
         "doctype": "Property Setter",
         "filters": [
             ["doc_type", "in", ["Leave Application", "Expense Claim"]],
-            ["name", "in", ["Leave Application-status-options", "Expense Claim-status-options"]]
+            ["name", "in", ["Leave Application-status-options", "Expense Claim-status-options", "Expense Claim-employee-ignore_user_permissions", "Leave Application-employee-ignore_user_permissions"]]
         ]
     },
     {

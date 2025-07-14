@@ -30,5 +30,37 @@
   "property_type": null,
   "row_name": null,
   "value": "Open\nPending Next Approval\nApproved\nCancelled\nRejected"
+ },
+ {
+  "default_value": null,
+  "doc_type": "Leave Application",
+  "docstatus": 0,
+  "doctype": "Property Setter",
+  "doctype_or_field": "DocField",
+  "field_name": "employee",
+  "is_system_generated": 0,
+  "modified": "2025-07-14 09:59:14.794147",
+  "module": null,
+  "name": "Leave Application-employee-ignore_user_permissions",
+  "property": "ignore_user_permissions",
+  "property_type": "Check",
+  "row_name": null,
+  "value": "1"
+ },
+ {
+  "default_value": null,
+  "doc_type": "Expense Claim",
+  "docstatus": 0,
+  "doctype": "Property Setter",
+  "doctype_or_field": "DocField",
+  "field_name": "employee",
+  "is_system_generated": 0,
+  "modified": "2025-07-14 09:59:40.272711",
+  "module": null,
+  "name": "Expense Claim-employee-ignore_user_permissions",
+  "property": "ignore_user_permissions",
+  "property_type": "Check",
+  "row_name": null,
+  "value": "1"
  }
 ]

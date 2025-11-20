@@ -31,7 +31,7 @@ frappe.ui.form.on('Leave Application', {
         const is_hr_manager = await frappe.user.has_role("HR Manager");
         const is_admin = current_user === "Administrator";
 
-        if ((is_hr_manager || is_admin) && current_user !== frm.doc.owner) {
+        if (is_hr_manager || is_admin) {
             frm.disable_save();
             frm.page.btn_primary?.hide();
 

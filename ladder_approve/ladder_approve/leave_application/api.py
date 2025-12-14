@@ -36,6 +36,7 @@ def forward_leave(docname, designation=None):
     doc.status = "Pending Next Approval"
 
     doc.save(ignore_permissions=True)
+    # utils.update_approver_share("Leave Application", doc.name, doc.leave_approver)
 
     return f"Leave forwarded to next approver: {next_mgr['employee']}"
 

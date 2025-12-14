@@ -66,3 +66,137 @@ def get_manager_chain(employee: str, stop_designations: Optional[List[str]] = No
             break
         current_emp = manager
     return chain
+
+
+def after_save(doc, method):
+    """
+    Hook function to be called after a document is saved.
+    Updates DocShare permissions for the current approver.
+    """
+    if not hasattr(doc, 'leave_approver') or not doc.leave_approver:
+        return
+
+    # Only process if this is a Leave Application
+    if doc.doctype == "Leave Application":
+        update_approver_share(
+            doctype=doc.doctype,
+            docname=doc.name,
+            approver=doc.leave_approver
+        )
+        share_with_previous_approvers(doc)
+
+def update_approver_share(doctype, docname, approver):
+    """
+    Update DocShare record for the approver with read, write, share permissions and email notification
+    """
+    if not approver or approver == "Administrator":
+        return
+
+    try:
+        # Get the existing DocShare record
+        share = frappe.db.get_value(
+            "DocShare",
+            {
+                "user": approver,
+                "share_doctype": doctype,
+                "share_name": docname
+            },
+            ["name", "read", "write", "share", "notify_by_email"],
+            as_dict=1
+        )
+
+        if share:
+            # Update existing share with required permissions
+            frappe.db.sql("""
+                UPDATE `tabDocShare`
+                SET `read` = 1,
+                    `write` = 1,
+                    `share` = 1,
+                    `notify_by_email` = 1
+                WHERE name = %s
+            """, share.name)
+        else:
+            # Create new share with all permissions
+            share = frappe.get_doc({
+                "doctype": "DocShare",
+                "user": approver,
+                "share_doctype": doctype,
+                "share_name": docname,
+                "read": 1,
+                "write": 1,
+                "share": 1,
+                "everyone": 0,
+                "notify_by_email": 1
+            })
+            share.insert(ignore_permissions=True)
+        
+        frappe.db.commit()
+       
+        return True
+
+    except Exception as e:
+        frappe.log_error(
+            title="Failed to Update Share Permission",
+            message=f"Error updating share for {doctype} {docname} with user {approver}: {str(e)}"
+        )
+        return False
+
+
+def share_with_previous_approvers(doc):
+    if not doc.custom_previous_approvers:
+        return
+
+    doc_company = doc.company
+
+    users = [
+        u.strip()
+        for u in doc.custom_previous_approvers.split("\n")
+        if u.strip()
+    ]
+
+    for user in users:
+        if user in ("Administrator", doc.leave_approver):
+            continue
+
+        user_company = frappe.db.get_value(
+            "Employee",
+            {"user_id": user},
+            "company"
+        )
+
+        # Only if cross-company
+        if not user_company or user_company == doc_company:
+            continue
+
+        # Skip if already shared
+        if frappe.db.exists(
+            "DocShare",
+            {
+                "user": user,
+                "share_doctype": doc.doctype,
+                "share_name": doc.name
+            }
+        ):
+            continue
+
+        # READ ONLY
+
+        frappe.db.sql(
+            """
+            INSERT INTO `tabDocShare`
+            (`name`, `user`, `share_doctype`, `share_name`,
+            `read`, `write`, `submit`, `share`, `notify_by_email`,
+            `creation`, `modified`, `owner`)
+            VALUES
+            (%s, %s, %s, %s, 1, 0, 0, 0, 0, NOW(), NOW(), %s)
+            """,
+            (
+                frappe.generate_hash(),
+                user,
+                doc.doctype,
+                doc.name,
+                frappe.session.user
+            )
+        )
+
+        frappe.db.commit()

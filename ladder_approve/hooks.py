@@ -181,6 +181,7 @@ doc_events = {
     "Leave Application": {
         "before_save": "ladder_approve.ladder_approve.leave_application.api.before_save",
         "before_submit": "ladder_approve.ladder_approve.leave_application.api.before_submit",
+        "on_update": "ladder_approve.ladder_approve.utils.after_save"
     },
     "Expense Claim": {
         "before_save": "ladder_approve.ladder_approve.expense_claim.api.before_save",

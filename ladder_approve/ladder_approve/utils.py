@@ -41,32 +41,27 @@ def validate_doc(docname: str, doctype: str, approver_field: str) -> object:
         frappe.throw(_("You're not the assigned approver."))
     return doc
 
-def get_manager_chain(employee: str, stop_designations: Optional[List[str]] = None) -> List[Dict]:
+def get_manager_chain(employee: str) -> List[Dict]:
     """
-    Build the manager approval chain for an employee.
-    stop_designations: list of substrings (e.g., ["hr", "human resource"])
-    Returns a list of dicts with keys: employee, user_id, is_hr
+    Build full manager chain until top (no stopping by designation)
     """
-    if stop_designations is None:
-        stop_designations = ["hr", "human resource"]
     chain = []
     visited = set()
     current_emp = frappe.get_doc("Employee", employee)
+
     while current_emp.reports_to and current_emp.name not in visited:
         visited.add(current_emp.name)
+
         manager = frappe.get_doc("Employee", current_emp.reports_to)
-        designation = (manager.designation or "").lower()
-        is_hr = any(stop in designation for stop in stop_designations)
+
         chain.append({
             "employee": manager.employee_name,
-            "user_id": manager.user_id,
-            "is_hr": is_hr
+            "user_id": manager.user_id
         })
-        if is_hr:
-            break
-        current_emp = manager
-    return chain
 
+        current_emp = manager
+
+    return chain
 
 def after_save(doc, method):
     """

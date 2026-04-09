@@ -86,7 +86,7 @@ def leave_application_permission_query(user):
 
     has_role = frappe.db.exists("Has Role", {
         "parent": user,
-        "role": ["in", ["System Manager", "HR Manager"]]
+        "role": ["in", ["System Manager", "HR Manager", "HR User"]]
     })
 
     if has_role:
